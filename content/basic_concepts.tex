@@ -146,7 +146,7 @@ $\frac{y^{(i)}(\theta \cdot x^{(i)} + \theta _0)}{\mid \mid \theta \mid \mid }=\
 \textbf{Hinge Loss (agreement)}
 \begin{align*}
 Agreement &= z = y^{(i)}(\theta \cdot x^{(i)} + \theta _0)\\
-Loss_h(z) &= 
+Loss_h(z) &= \max\lbrace{0, 1-z\rbrace} = 
 \begin{cases}
 		 0 \text{ if } z \geq 1\\
 		 1-z \text{ if } z < 1

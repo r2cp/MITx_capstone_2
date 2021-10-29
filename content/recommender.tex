@@ -2,9 +2,9 @@
 
 \subsection{K nearest neighbors}
 
-The  $K$-Nearest Neighbor method makes use of ratings by  $K$  other “similar" users when predicting  Yai .
+The  $K$-Nearest Neighbor method makes use of ratings by  $K$  other ``similar'' users when predicting  Yai .
 
-Let  $KNN(a)$  be the set of  K  users “similar to" user  $a$ , and let $sim(a,b)$ be a similarity measure between users  $a$  and  $b \in KNN(a)$. The  K -Nearest Neighbor method predicts a ranking  Yai  to be :
+Let  $KNN(a)$  be the set of  K  users ``similar to'' user  $a$ , and let $sim(a,b)$ be a similarity measure between users  $a$  and  $b \in KNN(a)$. The  K -Nearest Neighbor method predicts a ranking  Yai  to be :
 
 \begin{align*}
 \widehat{Y}_{ai} = \displaystyle \frac{\displaystyle \sum _{b \in \text {KNN}(a)} \text {sim}(a,b) Y_{bi}}{\displaystyle \sum _{b \in \text {KNN}(a)} \text {sim}(a,b)}.

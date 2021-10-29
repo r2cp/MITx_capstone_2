@@ -1,0 +1,173 @@
+\subsection {ATE abd Selection Bias} 
+When we observe a group of subjects, some of whom have been treated and some not, we calculate
+\begin {equation} \begin {split}
+& \EE(Y_i(1) \g  W_i = 1) - \EE(Y_i(0) \g  W_i = 0) \iff \\
+& [ \EE(Y_i(1) \g  W_i = 1) -  \EE(Y_i(0) \g  W_i = 1) ] +  \\
+& \qquad \EE(Y_i(0) \g  W_i = 1) -  \EE(Y_i(0) \g  W_i = 0) ] \iff  \\
+& \text {Average Treatment Effect} + \text { Selection Bias} \\
+\end {split} \end {equation}
+
+\subsection {Fisher exact test in R}
+\begin{lstlisting}
+library(perm)
+perms <- chooseMatrix(6, 3)
+A <- matrix(c(38.2, 37.1, 37.6, 36.4, 37.3, 36), nrow=6, ncol=1, byrow=TRUE)
+is.treatment <- c(1, 1, 1, 0, 0, 0)
+
+n_treatment <- sum(is.treatment)
+n_control <- length(A) - sum(is.treatment)
+treatment_avg <- (1/n_treatment) * perms %*% A
+control_avg <- (1/3) * (1-perms) %*% A
+test_statistic <- abs(treatment_avg - control_avg)
+
+rownumber <- apply(apply(perms, 1, 
+    function(x) (x == is.treatment)), 2, sum)
+rownumber <- (rownumber == length(A))
+observed_test <- test_statistic[rownumber == TRUE]
+
+larger_than_observed <- (test_statistic >= observed_test)
+sum(larger_than_observed) / length(test_statistic)
+\end{lstlisting}
+
+
+\subsection {Fixed effects model} \label {r: fem}
+G(factor(admin)) creates a dummy variable, one per region, and includes the dummy variable
+in the regression
+\begin{lstlisting}[language=R]
+library("lfe")
+model2 <- felm(sex ~ teasown + post + teapost + 
+G(factor(admin)), data = qiandata)
+summary(model2)
+\end{lstlisting}
+
+% \subsection {Instrument variable regression}
+% To use the ivreg() function directly one needs to setup the call as
+% \begin{lstlisting}[language=R]
+% ivreg (y ~ exogenous_vars + endogenous_var | 
+% exogenous_vars + instrument_var)
+% \end{lstlisting}
+
+
+\subsection{Neyman analysis}
+\begin{lstlisting}
+data <- read.csv("data_myData.csv")
+treatment <- data$T == 1
+
+treatment_mean <- mean(data$Y[treatment], na.rm=TRUE)
+control_mean <- mean(data$Y[!treatment], na.rm=TRUE)
+ate <- treatment_mean - control_mean
+
+Nc <- sum(!treatment)
+Nt <- sum(treatment)
+Sc2 <- (1/(Nc-1)) * sum( (data$Y[!treatment] - control_mean)^2 )
+St2 <- (1/(Nt-1)) * sum( (data$Y[treatment] - treatment_mean)^2 )
+
+Vneyman <- (Sc2/Nc + St2/Nt)
+
+# N > 30
+ub <- ate + 1.96 * sqrt(Vneyman)
+lb <- ate - 1.96 * sqrt(Vneyman)
+
+# t-distribution analysis
+g <- ( Vneyman^2 / ( (St2/Nt)^2/(Nt+1) + (Sc2/Nc)^2/(Nc+1) ) ) - 2
+ub <- ate + qt(0.975, g) * sqrt(Vneyman)
+lb <- ate - qt(0.975, g) * sqrt(Vneyman)
+\end{lstlisting}
+
+\subsection{Regression commands}
+\begin{lstlisting}
+hprices <- read.csv("data_House_Prices_and_Crime_1.csv")
+
+str(hprices)
+summary(hprices)
+subset(hprices, index_nsa == 54.29)
+
+model1 <- lm(index_nsa ~ Homicides + Robberies + Assaults, data=hprices)
+summary(model1)
+confint(model1)
+\end{lstlisting}
+
+\subsection{F-test, restricted model}
+\begin{lstlisting}
+model_unrest <- lm(index_nsa ~ Homicides + Robberies + Assaults, data=hprices)
+anova_unrest <- anova(model_unrest)
+model_rest <- lm(index_nsa ~ I(Homicides-Assaults) + I(Robberies-Assaults), data=hprices)
+anova_rest <- anova(model_rest)
+
+# F statistic
+r <- 1
+k <- 3
+ssr_u <- anova_unrest$`Sum Sq`[4]
+ssr_r <- anova_rest$`Sum Sq`[length(anova_rest$`Sum Sq`)]
+statistic_test <- (((ssr_r - ssr_u)/r) / ((ssr_u) / anova_unrest$Df[4]))
+pvalue <- df(statistic_test, r, anova_unrest$Df[4])
+\end{lstlisting}
+
+\subsection{QQ-plots}
+The R base functions \lstinline{qqnorm()} and \lstinline{qqline()} can be used to produce quantile-quantile plots:
+\begin{lstlisting}
+data <- runif(1000)
+qqnorm(data)
+qqline(data)
+\end{lstlisting}
+
+\subsection{Density plots}
+\begin{lstlisting}
+data <- runif(1000)
+d <- density(data, bw = 0.01)
+plot(d)
+\end{lstlisting}
+
+
+\subsection{Difference in difference model}
+\begin{lstlisting}
+manufacturing <- read.csv("data_manufacturing.csv")
+
+# Cleaning
+library(tidyverse)
+manu <- manufacturing %>% 
+filter((year == 1987 | year == 1988) & !is.na(scrap)) %>%
+select(year, fcode, scrap, grant)
+
+treated <- manu %>%
+    filter(grant == 1) %>%
+    select(fcode)
+treated_firms <- treated$fcode
+
+# Add column 'treated'
+manu <- manu %>%
+    mutate(treated = 1*(fcode %in% treated_firms))
+
+# Average treatment and control 
+did_results <- manu %>%
+    group_by(year, treated) %>%
+    summarize(promedio = mean(scrap), n = n())
+did_results
+
+# DiD model
+did_model <- lm(scrap ~ treated + I(year==1988) + I(treated*(year==1988)), data=manu)
+\end{lstlisting}
+
+
+\subsection{R distribution functions}
+The functions for the density/mass function, cumulative distribution function, quantile function and random variate generation are named in the form \lstinline{dxxx}, \lstinline{pxxx}, \lstinline{qxxx} and \lstinline{rxxx} respectively.
+\begin{itemize}
+\item For the beta distribution see \lstinline{dbeta}.
+\item For the binomial (including Bernoulli) distribution see \lstinline{dbinom}.
+\item For the Cauchy distribution see \lstinline{dcauchy}.
+\item For the chi-squared distribution see \lstinline{dchisq}.
+\item For the exponential distribution see \lstinline{dexp}.
+\item For the F distribution see \lstinline{df}.
+\item For the gamma distribution see \lstinline{dgamma}.
+\item For the geometric distribution see \lstinline{dgeom}. (This is also a special case of the negative binomial.)
+\item For the hypergeometric distribution see \lstinline{dhyper}.
+\item For the log-normal distribution see \lstinline{dlnorm}.
+\item For the multinomial distribution see \lstinline{dmultinom}.
+\item For the negative binomial distribution see \lstinline{dnbinom}.
+\item For the normal distribution see \lstinline{dnorm}.
+\item For the Poisson distribution see \lstinline{dpois}.
+\item For the Student's t distribution see \lstinline{dt}.
+\item For the uniform distribution see \lstinline{dunif}.
+\item For the Weibull distribution see \lstinline{dweibull}.
+\end{itemize}
+
